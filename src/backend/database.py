@@ -5,11 +5,116 @@ MongoDB database configuration and setup for Mergington High School API
 from pymongo import MongoClient
 from argon2 import PasswordHasher
 
-# Connect to MongoDB
-client = MongoClient('mongodb://localhost:27017/')
-db = client['mergington_high']
-activities_collection = db['activities']
-teachers_collection = db['teachers']
+# Try to connect to MongoDB, fall back to in-memory if not available
+try:
+    client = MongoClient('mongodb://localhost:27017/', serverSelectionTimeoutMS=1000)
+    # Test connection
+    client.admin.command('ping')
+    db = client['mergington_high']
+    activities_collection = db['activities']
+    teachers_collection = db['teachers']
+    MONGODB_AVAILABLE = True
+    print("✅ Connected to MongoDB")
+except Exception as e:
+    print(f"⚠️  MongoDB not available, using in-memory storage: {e}")
+    MONGODB_AVAILABLE = False
+    # Use dictionaries as in-memory storage
+    _in_memory_activities = {}
+    _in_memory_teachers = {}
+    
+    # Create mock collection objects that work with dictionaries
+    class MockCollection:
+        def __init__(self, storage_dict):
+            self.storage = storage_dict
+        
+        def count_documents(self, query):
+            return len(self.storage)
+        
+        def insert_one(self, document):
+            doc_id = document["_id"]
+            self.storage[doc_id] = document
+        
+        def find_one(self, query):
+            if not query:
+                return None
+            doc_id = query.get("_id")
+            return self.storage.get(doc_id)
+        
+        def find(self, query=None):
+            if not query:
+                # Return copies with _id field added
+                results = []
+                for key, doc in self.storage.items():
+                    result_doc = dict(doc)
+                    result_doc['_id'] = key
+                    results.append(result_doc)
+                return results
+            
+            results = []
+            for key, doc in self.storage.items():
+                matches = True
+                for condition_key, condition in query.items():
+                    if condition_key == "schedule_details.days":
+                        # Handle MongoDB $in operator for days
+                        if "$in" in condition:
+                            target_days = condition["$in"]
+                            doc_days = doc.get("schedule_details", {}).get("days", [])
+                            if not any(day in doc_days for day in target_days):
+                                matches = False
+                                break
+                    elif condition_key == "schedule_details.start_time":
+                        # Handle MongoDB $gte operator
+                        if "$gte" in condition:
+                            doc_start = doc.get("schedule_details", {}).get("start_time", "00:00")
+                            if doc_start < condition["$gte"]:
+                                matches = False
+                                break
+                    elif condition_key == "schedule_details.end_time":
+                        # Handle MongoDB $lte operator
+                        if "$lte" in condition:
+                            doc_end = doc.get("schedule_details", {}).get("end_time", "23:59")
+                            if doc_end > condition["$lte"]:
+                                matches = False
+                                break
+                
+                if matches:
+                    result_doc = dict(doc)
+                    result_doc['_id'] = key
+                    results.append(result_doc)
+            
+            return results
+        
+        def aggregate(self, pipeline):
+            # Simple aggregation for days endpoint
+            days = set()
+            for doc in self.storage.values():
+                schedule_days = doc.get("schedule_details", {}).get("days", [])
+                days.update(schedule_days)
+            
+            return [{"_id": day} for day in sorted(days)]
+        
+        def update_one(self, query, update):
+            doc_id = query.get("_id")
+            if doc_id in self.storage:
+                if "$set" in update:
+                    self.storage[doc_id].update(update["$set"])
+                elif "$push" in update:
+                    for field, value in update["$push"].items():
+                        if field not in self.storage[doc_id]:
+                            self.storage[doc_id][field] = []
+                        self.storage[doc_id][field].append(value)
+                elif "$pull" in update:
+                    for field, value in update["$pull"].items():
+                        if field in self.storage[doc_id]:
+                            try:
+                                self.storage[doc_id][field].remove(value)
+                            except ValueError:
+                                pass
+                return type('MockResult', (), {'modified_count': 1})()
+            return type('MockResult', (), {'modified_count': 0})()
+    
+    activities_collection = MockCollection(_in_memory_activities)
+    teachers_collection = MockCollection(_in_memory_teachers)
 
 # Methods
 def hash_password(password):
@@ -163,6 +268,17 @@ initial_activities = {
         },
         "max_participants": 16,
         "participants": ["william@mergington.edu", "jacob@mergington.edu"]
+    },
+    "Manga Maniacs": {
+        "description": "Explore the fantastic stories of the most interesting characters from Japanese Manga (graphic novels).",
+        "schedule": "Tuesdays, 7:00 PM - 8:30 PM",
+        "schedule_details": {
+            "days": ["Tuesday"],
+            "start_time": "19:00",
+            "end_time": "20:30"
+        },
+        "max_participants": 15,
+        "participants": []
     }
 }
 
