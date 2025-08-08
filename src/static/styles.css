@@ -619,6 +619,270 @@ footer {
   right: 15px;
 }
 
+/* View controls in header */
+#view-controls {
+  position: absolute;
+  top: 10px;
+  left: 15px;
+  display: flex;
+  gap: 8px;
+}
+
+.view-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.view-toggle-button.active {
+  background-color: rgba(255, 255, 255, 0.4);
+  font-weight: bold;
+}
+
+.view-toggle-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* View containers */
+.view-container {
+  width: 100%;
+}
+
+.view-container.hidden {
+  display: none !important;
+}
+
+.view-container.active {
+  display: block;
+}
+
+/* Calendar View Styles */
+#calendar-container {
+  background-color: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  min-height: 600px;
+}
+
+.calendar-header {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background-color: var(--primary);
+  color: white;
+  font-weight: bold;
+  text-align: center;
+}
+
+.time-column-header {
+  padding: 12px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.8rem;
+}
+
+.day-header {
+  padding: 12px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
+}
+
+.day-header:last-child {
+  border-right: none;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background-color: var(--surface);
+}
+
+.time-slot {
+  padding: 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  background-color: var(--background);
+}
+
+.day-column {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  min-height: 50px;
+  background-color: var(--surface);
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+/* Calendar Activity Styles */
+.calendar-activity {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  background: linear-gradient(145deg, var(--secondary), var(--secondary-dark));
+  color: white;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.calendar-activity:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  white-space: normal;
+  height: auto;
+  min-height: 30px;
+}
+
+.calendar-activity.conflict {
+  /* When activities overlap, reduce width */
+  right: 52%;
+}
+
+.calendar-activity.conflict:nth-child(2n) {
+  left: 50%;
+  right: 2px;
+}
+
+.calendar-activity.conflict-3:first-child {
+  right: 68%;
+}
+
+.calendar-activity.conflict-3:nth-child(2) {
+  left: 34%;
+  right: 34%;
+}
+
+.calendar-activity.conflict-3:nth-child(3) {
+  left: 68%;
+  right: 2px;
+}
+
+/* Activity type colors for calendar */
+.calendar-activity.sports {
+  background: linear-gradient(145deg, #2e7d32, #1b5e20);
+}
+
+.calendar-activity.arts {
+  background: linear-gradient(145deg, #7b1fa2, #4a148c);
+}
+
+.calendar-activity.academic {
+  background: linear-gradient(145deg, #1565c0, #0d47a1);
+}
+
+.calendar-activity.community {
+  background: linear-gradient(145deg, #e65100, #bf360c);
+}
+
+.calendar-activity.technology {
+  background: linear-gradient(145deg, #3949ab, #283593);
+}
+
+.activity-title {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.activity-enrollment {
+  font-size: 0.65rem;
+  opacity: 0.9;
+}
+
+/* Tooltip for calendar activities */
+.calendar-activity-tooltip {
+  position: absolute;
+  background-color: rgba(33, 33, 33, 0.95);
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  max-width: 300px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.calendar-activity-tooltip.show {
+  opacity: 1;
+}
+
+.tooltip-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.tooltip-description {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.tooltip-schedule {
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.tooltip-enrollment {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* Responsive adjustments for calendar */
+@media (max-width: 768px) {
+  .calendar-grid {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+  
+  .calendar-header {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+  
+  .time-column-header {
+    padding: 8px 4px;
+    font-size: 0.7rem;
+  }
+  
+  .day-header {
+    padding: 8px 4px;
+    font-size: 0.8rem;
+  }
+  
+  .calendar-activity {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+  }
+  
+  .time-slot {
+    padding: 6px 4px;
+    font-size: 0.65rem;
+  }
+}
+
 #user-status {
   display: flex;
   align-items: center;

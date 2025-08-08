@@ -10,6 +10,16 @@
     <header>
       <h1>Mergington High School</h1>
       <h2>Extracurricular Activities</h2>
+      <div id="view-controls">
+        <button id="card-view-btn" class="view-toggle-button active">
+          <span>📇</span>
+          <span>Card View</span>
+        </button>
+        <button id="calendar-view-btn" class="view-toggle-button">
+          <span>📅</span>
+          <span>Calendar View</span>
+        </button>
+      </div>
       <div id="user-controls">
         <div id="user-status">
           <button id="login-button" class="icon-button">
@@ -103,10 +113,33 @@
 
           <!-- Activities Content -->
           <div class="activities-content">
-            <div id="activities-list">
-              <!-- Activities will be loaded here -->
-              <p>Loading activities...</p>
+            <!-- Card View -->
+            <div id="card-view" class="view-container active">
+              <div id="activities-list">
+                <!-- Activities will be loaded here -->
+                <p>Loading activities...</p>
+              </div>
             </div>
+            
+            <!-- Calendar View -->
+            <div id="calendar-view" class="view-container hidden">
+              <div id="calendar-container">
+                <div class="calendar-header">
+                  <div class="time-column-header"></div>
+                  <div class="day-header">Sun</div>
+                  <div class="day-header">Mon</div>
+                  <div class="day-header">Tue</div>
+                  <div class="day-header">Wed</div>
+                  <div class="day-header">Thu</div>
+                  <div class="day-header">Fri</div>
+                  <div class="day-header">Sat</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                  <!-- Calendar time slots will be generated here -->
+                </div>
+              </div>
+            </div>
+            
             <div id="message" class="hidden message"></div>
           </div>
         </div>
