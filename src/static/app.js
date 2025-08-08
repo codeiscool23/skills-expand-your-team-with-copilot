@@ -8,6 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const activityInput = document.getElementById("activity");
   const closeRegistrationModal = document.querySelector(".close-modal");
 
+  // View control elements
+  const cardViewBtn = document.getElementById("card-view-btn");
+  const calendarViewBtn = document.getElementById("calendar-view-btn");
+  const cardView = document.getElementById("card-view");
+  const calendarView = document.getElementById("calendar-view");
+  const calendarGrid = document.getElementById("calendar-grid");
+
   // Search and filter elements
   const searchInput = document.getElementById("activity-search");
   const searchButton = document.getElementById("search-button");
@@ -40,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchQuery = "";
   let currentDay = "";
   let currentTimeRange = "";
+  let currentView = "card"; // "card" or "calendar"
 
   // Authentication state
   let currentUser = null;
@@ -411,6 +419,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Function to display filtered activities
   function displayFilteredActivities() {
+    if (currentView === "card") {
+      displayCardView();
+    } else {
+      displayCalendarView();
+    }
+  }
+
+  // Function to display card view (existing functionality)
+  function displayCardView() {
     // Clear the activities list
     activitiesList.innerHTML = "";
 
@@ -469,6 +486,280 @@ document.addEventListener("DOMContentLoaded", () => {
     // Display filtered activities
     Object.entries(filteredActivities).forEach(([name, details]) => {
       renderActivityCard(name, details);
+    });
+  }
+
+  // Function to switch views
+  function switchView(view) {
+    currentView = view;
+    
+    // Update button states
+    cardViewBtn.classList.toggle("active", view === "card");
+    calendarViewBtn.classList.toggle("active", view === "calendar");
+    
+    // Update view containers
+    cardView.classList.toggle("active", view === "card");
+    cardView.classList.toggle("hidden", view !== "card");
+    calendarView.classList.toggle("active", view === "calendar");
+    calendarView.classList.toggle("hidden", view !== "calendar");
+    
+    // Refresh the display
+    displayFilteredActivities();
+  }
+
+  // Function to create calendar grid
+  function createCalendarGrid() {
+    const grid = document.getElementById("calendar-grid");
+    grid.innerHTML = "";
+
+    // Time slots from 6:00 AM to 10:00 PM
+    const startHour = 6;
+    const endHour = 22;
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    for (let hour = startHour; hour <= endHour; hour++) {
+      // Time slot label
+      const timeSlot = document.createElement("div");
+      timeSlot.className = "time-slot";
+      
+      // Format time in 12-hour format
+      const period = hour >= 12 ? "PM" : "AM";
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      timeSlot.textContent = `${displayHour}:00 ${period}`;
+      
+      grid.appendChild(timeSlot);
+
+      // Day columns for this hour
+      days.forEach((day, dayIndex) => {
+        const dayColumn = document.createElement("div");
+        dayColumn.className = "day-column";
+        dayColumn.dataset.day = day;
+        dayColumn.dataset.hour = hour;
+        grid.appendChild(dayColumn);
+      });
+    }
+  }
+
+  // Function to display calendar view
+  function displayCalendarView() {
+    // Create the grid if it doesn't exist
+    if (calendarGrid.children.length === 0) {
+      createCalendarGrid();
+    }
+
+    // Clear existing activities from calendar
+    document.querySelectorAll('.calendar-activity').forEach(el => el.remove());
+
+    // Apply filtering (similar to card view)
+    let filteredActivities = {};
+
+    Object.entries(allActivities).forEach(([name, details]) => {
+      const activityType = getActivityType(name, details.description);
+
+      // Apply category filter
+      if (currentFilter !== "all" && activityType !== currentFilter) {
+        return;
+      }
+
+      // Apply weekend filter if selected
+      if (currentTimeRange === "weekend" && details.schedule_details) {
+        const activityDays = details.schedule_details.days;
+        const isWeekendActivity = activityDays.some((day) =>
+          timeRanges.weekend.days.includes(day)
+        );
+
+        if (!isWeekendActivity) {
+          return;
+        }
+      }
+
+      // Apply search filter
+      const searchableContent = [
+        name.toLowerCase(),
+        details.description.toLowerCase(),
+        formatSchedule(details).toLowerCase(),
+      ].join(" ");
+
+      if (
+        searchQuery &&
+        !searchableContent.includes(searchQuery.toLowerCase())
+      ) {
+        return;
+      }
+
+      // Activity passed all filters, add to filtered list
+      filteredActivities[name] = details;
+    });
+
+    // Place activities in calendar
+    Object.entries(filteredActivities).forEach(([name, details]) => {
+      if (details.schedule_details) {
+        renderCalendarActivity(name, details);
+      }
+    });
+
+    // Handle time conflicts
+    handleTimeConflicts();
+  }
+
+  // Function to render an activity in the calendar
+  function renderCalendarActivity(name, details) {
+    const activityType = getActivityType(name, details.description);
+    const { days, start_time, end_time } = details.schedule_details;
+    
+    // Parse start and end times
+    const [startHour, startMinute] = start_time.split(':').map(Number);
+    const [endHour, endMinute] = end_time.split(':').map(Number);
+    
+    days.forEach(day => {
+      // Find the correct day column
+      const dayColumn = document.querySelector(`[data-day="${day}"][data-hour="${startHour}"]`);
+      
+      if (dayColumn) {
+        // Create activity element
+        const activityEl = document.createElement("div");
+        activityEl.className = `calendar-activity ${activityType}`;
+        
+        // Calculate duration and position
+        const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute);
+        const height = Math.max((durationMinutes / 60) * 50, 30); // Minimum 30px height
+        const topOffset = (startMinute / 60) * 50;
+        
+        activityEl.style.top = `${topOffset}px`;
+        activityEl.style.height = `${height}px`;
+        
+        // Activity content
+        const takenSpots = details.participants.length;
+        const totalSpots = details.max_participants;
+        
+        activityEl.innerHTML = `
+          <div class="activity-title">${name}</div>
+          <div class="activity-enrollment">${takenSpots}/${totalSpots} enrolled</div>
+        `;
+        
+        // Add data attributes for conflict detection
+        activityEl.dataset.activityName = name;
+        activityEl.dataset.day = day;
+        activityEl.dataset.startTime = start_time;
+        activityEl.dataset.endTime = end_time;
+        
+        // Add hover tooltip
+        addCalendarActivityTooltip(activityEl, name, details);
+        
+        // Add click handler for registration (if authenticated)
+        if (currentUser && takenSpots < totalSpots) {
+          activityEl.style.cursor = "pointer";
+          activityEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openRegistrationModal(name);
+          });
+        }
+        
+        dayColumn.appendChild(activityEl);
+      }
+    });
+  }
+
+  // Function to add tooltip to calendar activity
+  function addCalendarActivityTooltip(activityEl, name, details) {
+    let tooltip = null;
+    
+    activityEl.addEventListener("mouseenter", (e) => {
+      // Create tooltip
+      tooltip = document.createElement("div");
+      tooltip.className = "calendar-activity-tooltip";
+      
+      const formattedSchedule = formatSchedule(details);
+      const takenSpots = details.participants.length;
+      const totalSpots = details.max_participants;
+      
+      tooltip.innerHTML = `
+        <div class="tooltip-title">${name}</div>
+        <div class="tooltip-description">${details.description}</div>
+        <div class="tooltip-schedule"><strong>Schedule:</strong> ${formattedSchedule}</div>
+        <div class="tooltip-enrollment"><strong>Enrollment:</strong> ${takenSpots}/${totalSpots} spots filled</div>
+      `;
+      
+      document.body.appendChild(tooltip);
+      
+      // Position tooltip
+      const rect = activityEl.getBoundingClientRect();
+      tooltip.style.left = `${rect.right + 10}px`;
+      tooltip.style.top = `${rect.top}px`;
+      
+      // Adjust if tooltip goes off screen
+      const tooltipRect = tooltip.getBoundingClientRect();
+      if (tooltipRect.right > window.innerWidth) {
+        tooltip.style.left = `${rect.left - tooltipRect.width - 10}px`;
+      }
+      if (tooltipRect.bottom > window.innerHeight) {
+        tooltip.style.top = `${rect.bottom - tooltipRect.height}px`;
+      }
+      
+      // Show tooltip
+      setTimeout(() => {
+        if (tooltip) tooltip.classList.add("show");
+      }, 100);
+    });
+    
+    activityEl.addEventListener("mouseleave", () => {
+      if (tooltip) {
+        tooltip.remove();
+        tooltip = null;
+      }
+    });
+  }
+
+  // Function to handle time conflicts
+  function handleTimeConflicts() {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    days.forEach(day => {
+      const activitiesInDay = document.querySelectorAll(`[data-day="${day}"].calendar-activity`);
+      
+      // Group activities by time overlaps
+      const timeGroups = [];
+      
+      activitiesInDay.forEach(activity => {
+        const startTime = activity.dataset.startTime;
+        const endTime = activity.dataset.endTime;
+        
+        // Find if this activity overlaps with any existing group
+        let addedToGroup = false;
+        
+        for (let group of timeGroups) {
+          const overlaps = group.some(groupActivity => {
+            const groupStart = groupActivity.dataset.startTime;
+            const groupEnd = groupActivity.dataset.endTime;
+            
+            return (
+              (startTime >= groupStart && startTime < groupEnd) ||
+              (endTime > groupStart && endTime <= groupEnd) ||
+              (startTime <= groupStart && endTime >= groupEnd)
+            );
+          });
+          
+          if (overlaps) {
+            group.push(activity);
+            addedToGroup = true;
+            break;
+          }
+        }
+        
+        if (!addedToGroup) {
+          timeGroups.push([activity]);
+        }
+      });
+      
+      // Apply conflict styling
+      timeGroups.forEach(group => {
+        if (group.length > 1) {
+          const conflictClass = group.length === 2 ? "conflict" : `conflict-${group.length}`;
+          group.forEach((activity, index) => {
+            activity.classList.add(conflictClass);
+          });
+        }
+      });
     });
   }
 
@@ -589,6 +880,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     activitiesList.appendChild(activityCard);
   }
+
+  // Event listeners for view toggle buttons
+  cardViewBtn.addEventListener("click", () => {
+    switchView("card");
+  });
+
+  calendarViewBtn.addEventListener("click", () => {
+    switchView("calendar");
+  });
 
   // Event listeners for search and filter
   searchInput.addEventListener("input", (event) => {
